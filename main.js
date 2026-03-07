@@ -38,7 +38,7 @@ function getActiveTime(shiftDuration, idleTime) {
 // ============================================================
 function metQuota(date, activeTime) {
     var i = 0;
-    let c = 0;
+    let c = 0;//
 }
 
 // ============================================================
