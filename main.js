@@ -27,7 +27,9 @@ function getIdleTime(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
+    let i =0;
+    var x = 2;
+    console.log(x);
 }
 
 // ============================================================
