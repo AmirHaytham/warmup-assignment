@@ -7,7 +7,8 @@ const fs = require("fs");
 // Returns: string formatte as h:mm:ss
 // ============================================================
 function getShiftDuration(startTime, endTime) {
-    
+    var i = 3;
+    let u = 0;
 }
 
 // ============================================================
