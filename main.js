@@ -8,6 +8,7 @@ const fs = require("fs");
 // ============================================================
 function getShiftDuration(startTime, endTime) {
     // TODO: Implement this function
+    return endTime - startTime;
 }
 
 // ============================================================
