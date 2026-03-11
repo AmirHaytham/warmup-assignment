@@ -8,6 +8,7 @@ const fs = require("fs");
 // ============================================================
 function getShiftDuration(startTime, endTime) {
     // TODO: Implement this function
+    return endTime - startTime;
 }
 
 // ============================================================
@@ -18,6 +19,8 @@ function getShiftDuration(startTime, endTime) {
 // ============================================================
 function getIdleTime(startTime, endTime) {
     // TODO: Implement this function
+
+    return endTime - startTime;
 }
 
 // ============================================================
