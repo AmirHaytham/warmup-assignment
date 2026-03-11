@@ -249,7 +249,27 @@ function addShiftRecord(textFile, shiftObj) {
 // Returns: nothing (void)
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
-    // TODO: Implement this function
+
+    const fs = require("fs");
+
+    let data = fs.readFileSync(textFile, "utf8").trim();
+    let lines = data.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+
+        let parts = lines[i].split(",");
+
+        if (parts[0] === driverID && parts[2] === date) {
+
+            parts[9] = newValue;
+
+            lines[i] = parts.join(",");
+
+            break;
+        }
+    }
+
+    fs.writeFileSync(textFile, lines.join("\n"));
 }
 
 // ============================================================
@@ -260,7 +280,41 @@ function setBonus(textFile, driverID, date, newValue) {
 // Returns: number (-1 if driverID not found)
 // ============================================================
 function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+
+    const fs = require("fs");
+
+    let data = fs.readFileSync(textFile, "utf8").trim();
+    let lines = data.split("\n");
+
+    month = parseInt(month);
+
+    let count = 0;
+    let driverExists = false;
+
+    for (let line of lines) {
+
+        let parts = line.split(",");
+
+        if (parts[0] === driverID) {
+
+            driverExists = true;
+
+            let dateParts = parts[2].split("-");
+            let recordMonth = parseInt(dateParts[1]);
+
+            let hasBonus = parts[9].trim();
+
+            if (recordMonth === month && hasBonus === "true") {
+                count++;
+            }
+        }
+    }
+
+    if (!driverExists) {
+        return -1;
+    }
+
+    return count;
 }
 
 // ============================================================
@@ -271,7 +325,44 @@ function countBonusPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getTotalActiveHoursPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+
+    const fs = require("fs");
+
+    let data = fs.readFileSync(textFile, "utf8").trim();
+    let lines = data.split("\n");
+
+    let totalSeconds = 0;
+
+    for (let line of lines) {
+
+        let parts = line.split(",");
+
+        if (parts[0] === driverID) {
+
+            let dateParts = parts[2].split("-");
+            let recordMonth = parseInt(dateParts[1]);
+
+            if (recordMonth === month) {
+
+                let timeParts = parts[7].split(":");
+
+                let h = parseInt(timeParts[0]);
+                let m = parseInt(timeParts[1]);
+                let s = parseInt(timeParts[2]);
+
+                totalSeconds += h * 3600 + m * 60 + s;
+            }
+        }
+    }
+
+    let hours = Math.floor(totalSeconds / 3600);
+    let minutes = Math.floor((totalSeconds % 3600) / 60);
+    let seconds = totalSeconds % 60;
+
+    minutes = String(minutes).padStart(2, '0');
+    seconds = String(seconds).padStart(2, '0');
+
+    return hours + ":" + minutes + ":" + seconds;
 }
 
 // ============================================================
