@@ -17,7 +17,8 @@ function getShiftDuration(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
+    var i = 0;
+    let n = 1;
 }
 
 // ============================================================
