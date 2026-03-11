@@ -7,7 +7,42 @@ const fs = require("fs");
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getShiftDuration(startTime, endTime) {
-    // TODO: Implement this function
+    function toSeconds(timeStr) {
+
+        let parts = timeStr.split(" ");
+        let time = parts[0];
+        let period = parts[1];
+
+        let t = time.split(":");
+        let h = parseInt(t[0]);
+        let m = parseInt(t[1]);
+        let s = parseInt(t[2]);
+
+        if (period === "pm" && h !== 12) {
+            h += 12;
+        }
+
+        if (period === "am" && h === 12) {
+            h = 0;
+        }
+
+        return h * 3600 + m * 60 + s;
+    }
+
+    let start = toSeconds(startTime);
+    let end = toSeconds(endTime);
+
+    let diff = end - start;
+
+    if (diff < 0) {
+        diff += 24 * 3600;
+    }
+
+    let hours = Math.floor(diff / 3600);
+    let minutes = Math.floor((diff % 3600) / 60);
+    let seconds = diff % 60;
+
+    return hours + ":" + minutes + ":" + seconds;
 }
 
 // ============================================================
@@ -17,7 +52,55 @@ function getShiftDuration(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
+        function toSeconds(timeStr) {
+        let parts = timeStr.split(" ");
+        let time = parts[0];
+        let period = parts[1];
+
+        let t = time.split(":");
+        let h = parseInt(t[0]);
+        let m = parseInt(t[1]);
+        let s = parseInt(t[2]);
+
+        if (period === "pm" && h !== 12) {
+            h += 12;
+        }
+
+        if (period === "am" && h === 12) {
+            h = 0;
+        }
+
+        return h * 3600 + m * 60 + s;
+    }
+
+    let start = toSeconds(startTime);
+    let end = toSeconds(endTime);
+
+    if (end < start) {
+        end += 24 * 3600;
+    }
+
+    let deliveryStart = 8 * 3600;
+    let deliveryEnd = 22 * 3600;
+
+    let idle = 0;
+
+    if (start < deliveryStart) {
+        idle += deliveryStart - start;
+    }
+
+    if (end > deliveryEnd) {
+        idle += end - deliveryEnd;
+    }
+
+    let h = Math.floor(idle / 3600);
+    let m = Math.floor((idle % 3600) / 60);
+    let s = idle % 60;
+
+    m = String(m).padStart(2, '0');
+    s = String(s).padStart(2, '0');
+
+    return h + ":" + m + ":" + s;
 }
 
 // ============================================================
@@ -27,7 +110,30 @@ function getIdleTime(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
+    
+    function toSeconds(timeStr) {
+        let parts = timeStr.split(":");
+
+        let h = parseInt(parts[0]);
+        let m = parseInt(parts[1]);
+        let s = parseInt(parts[2]);
+
+        return h * 3600 + m * 60 + s;
+    }
+
+    let shift = toSeconds(shiftDuration);
+    let idle = toSeconds(idleTime);
+
+    let active = shift - idle;
+
+    let h = Math.floor(active / 3600);
+    let m = Math.floor((active % 3600) / 60);
+    let s = active % 60;
+
+    m = String(m).padStart(2, '0');
+    s = String(s).padStart(2, '0');
+
+    return h + ":" + m + ":" + s;
 }
 
 // ============================================================
