@@ -143,7 +143,33 @@ function getActiveTime(shiftDuration, idleTime) {
 // Returns: boolean
 // ============================================================
 function metQuota(date, activeTime) {
-    // TODO: Implement this function
+
+    function toSeconds(timeStr) {
+        let parts = timeStr.split(":");
+
+        let h = parseInt(parts[0]);
+        let m = parseInt(parts[1]);
+        let s = parseInt(parts[2]);
+
+        return h * 3600 + m * 60 + s;
+    }
+
+    let active = toSeconds(activeTime);
+
+    let normalQuota = 8 * 3600 + 24 * 60;
+    let eidQuota = 6 * 3600;
+
+    let day = parseInt(date.split("-")[2]);
+
+    let quota;
+
+    if (day >= 10 && day <= 30) {
+        quota = eidQuota;
+    } else {
+        quota = normalQuota;
+    }
+
+    return active >= quota;
 }
 
 // ============================================================
@@ -153,7 +179,65 @@ function metQuota(date, activeTime) {
 // Returns: object with 10 properties or empty object {}
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
+
+    const fs = require("fs");
+
+    let data = fs.readFileSync(textFile, "utf8").trim();
+    let lines = data.length ? data.split("\n") : [];
+
+    for (let line of lines) {
+        let parts = line.split(",");
+
+        if (parts[0] === shiftObj.driverID && parts[2] === shiftObj.date) {
+            return {};
+        }
+    }
+
+    let shiftDuration = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+    let idleTime = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+    let activeTime = getActiveTime(shiftDuration, idleTime);
+    let quotaMet = metQuota(shiftObj.date, activeTime);
+
+    let newRecord = {
+        driverID: shiftObj.driverID,
+        driverName: shiftObj.driverName,
+        date: shiftObj.date,
+        startTime: shiftObj.startTime,
+        endTime: shiftObj.endTime,
+        shiftDuration: shiftDuration,
+        idleTime: idleTime,
+        activeTime: activeTime,
+        metQuota: quotaMet,
+        hasBonus: false
+    };
+
+    let row = [
+        newRecord.driverID,
+        newRecord.driverName,
+        newRecord.date,
+        newRecord.startTime,
+        newRecord.endTime,
+        newRecord.shiftDuration,
+        newRecord.idleTime,
+        newRecord.activeTime,
+        newRecord.metQuota,
+        newRecord.hasBonus
+    ].join(",");
+
+    let insertIndex = lines.length;
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].startsWith(shiftObj.driverID + ",")) {
+            insertIndex = i + 1;
+            break;
+        }
+    }
+
+    lines.splice(insertIndex, 0, row);
+
+    fs.writeFileSync(textFile, lines.join("\n"));
+
+    return newRecord;
 }
 
 // ============================================================
