@@ -1,5 +1,38 @@
 const fs = require("fs");
 
+function toSeconds(t) {
+    t = t.trim().toLowerCase();
+    var period = t.slice(-2);
+    var nums = t.slice(0, -2).trim().split(":");
+    var h = parseInt(nums[0]);
+    var m = parseInt(nums[1]);
+    var s = parseInt(nums[2]);
+    if (period === "pm" && h !== 12) h += 12;
+    if (period === "am" && h === 12) h = 0;
+    return h * 3600 + m * 60 + s;
+}
+
+function durToSec(d) {
+    var p = d.trim().split(":");
+    return parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]);
+}
+
+function secToDur(sec) {
+    sec = Math.abs(sec);
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+
+function secToLongDur(sec) {
+    sec = Math.abs(sec);
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    return String(h).padStart(3, "0") + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
@@ -7,7 +40,8 @@ const fs = require("fs");
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getShiftDuration(startTime, endTime) {
-    // TODO: Implement this function
+    var diff = toSeconds(endTime) - toSeconds(startTime);
+    return secToDur(diff);
 }
 
 // ============================================================
@@ -17,7 +51,19 @@ function getShiftDuration(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
+    var start = toSeconds(startTime);
+    var end = toSeconds(endTime);
+    var workStart = 8 * 3600;
+    var workEnd = 22 * 3600;
+    var idle = 0;
+    if (start < workStart) {
+        idle += Math.min(workStart, end) - start;
+    }
+    if (end > workEnd) {
+        idle += end - Math.max(workEnd, start);
+    }
+    if (idle < 0) idle = 0;
+    return secToDur(idle);
 }
 
 // ============================================================
@@ -27,7 +73,8 @@ function getIdleTime(startTime, endTime) {
 // Returns: string formatted as h:mm:ss
 // ============================================================
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
+    var diff = durToSec(shiftDuration) - durToSec(idleTime);
+    return secToDur(diff);
 }
 
 // ============================================================
@@ -37,7 +84,17 @@ function getActiveTime(shiftDuration, idleTime) {
 // Returns: boolean
 // ============================================================
 function metQuota(date, activeTime) {
-    // TODO: Implement this function
+    var parts = date.split("-");
+    var y = parseInt(parts[0]);
+    var mo = parseInt(parts[1]);
+    var d = parseInt(parts[2]);
+    var needed;
+    if (y === 2025 && mo === 4 && d >= 10 && d <= 30) {
+        needed = 6 * 3600;
+    } else {
+        needed = 8 * 3600 + 24 * 60;
+    }
+    return durToSec(activeTime) >= needed;
 }
 
 // ============================================================
@@ -47,7 +104,53 @@ function metQuota(date, activeTime) {
 // Returns: object with 10 properties or empty object {}
 // ============================================================
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
+    var content = fs.readFileSync(textFile, "utf8");
+    var lines = content.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    for (var i = 0; i < lines.length; i++) {
+        var c = lines[i].split(",");
+        if (c[0].trim() === shiftObj.driverID && c[2].trim() === shiftObj.date) {
+            return {};
+        }
+    }
+
+    var sd = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+    var it = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+    var at = getActiveTime(sd, it);
+    var mq = metQuota(shiftObj.date, at);
+
+    var obj = {
+        driverID: shiftObj.driverID,
+        driverName: shiftObj.driverName,
+        date: shiftObj.date,
+        startTime: shiftObj.startTime,
+        endTime: shiftObj.endTime,
+        shiftDuration: sd,
+        idleTime: it,
+        activeTime: at,
+        metQuota: mq,
+        hasBonus: false
+    };
+
+    var newLine = obj.driverID + "," + obj.driverName + "," + obj.date + "," +
+        obj.startTime + "," + obj.endTime + "," + obj.shiftDuration + "," +
+        obj.idleTime + "," + obj.activeTime + "," + obj.metQuota + "," + obj.hasBonus;
+
+    var last = -1;
+    for (var j = 0; j < lines.length; j++) {
+        if (lines[j].split(",")[0].trim() === shiftObj.driverID) {
+            last = j;
+        }
+    }
+
+    if (last === -1) {
+        lines.push(newLine);
+    } else {
+        lines.splice(last + 1, 0, newLine);
+    }
+
+    fs.writeFileSync(textFile, lines.join("\n") + "\n", "utf8");
+    return obj;
 }
 
 // ============================================================
@@ -59,7 +162,19 @@ function addShiftRecord(textFile, shiftObj) {
 // Returns: nothing (void)
 // ============================================================
 function setBonus(textFile, driverID, date, newValue) {
-    // TODO: Implement this function
+    var content = fs.readFileSync(textFile, "utf8");
+    var lines = content.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    for (var i = 0; i < lines.length; i++) {
+        var c = lines[i].split(",");
+        if (c[0].trim() === driverID && c[2].trim() === date) {
+            c[9] = String(newValue);
+            lines[i] = c.join(",");
+            break;
+        }
+    }
+
+    fs.writeFileSync(textFile, lines.join("\n") + "\n", "utf8");
 }
 
 // ============================================================
@@ -70,7 +185,25 @@ function setBonus(textFile, driverID, date, newValue) {
 // Returns: number (-1 if driverID not found)
 // ============================================================
 function countBonusPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+    var content = fs.readFileSync(textFile, "utf8");
+    var lines = content.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    var found = false;
+    var count = 0;
+    var mo = parseInt(month);
+
+    for (var i = 0; i < lines.length; i++) {
+        var c = lines[i].split(",");
+        if (c[0].trim() === driverID) {
+            found = true;
+            var recMo = parseInt(c[2].trim().split("-")[1]);
+            if (recMo === mo && c[9].trim() === "true") {
+                count++;
+            }
+        }
+    }
+
+    return found ? count : -1;
 }
 
 // ============================================================
@@ -81,7 +214,22 @@ function countBonusPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getTotalActiveHoursPerMonth(textFile, driverID, month) {
-    // TODO: Implement this function
+    var content = fs.readFileSync(textFile, "utf8");
+    var lines = content.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    var total = 0;
+
+    for (var i = 0; i < lines.length; i++) {
+        var c = lines[i].split(",");
+        if (c[0].trim() === driverID) {
+            var recMo = parseInt(c[2].trim().split("-")[1]);
+            if (recMo === month) {
+                total += durToSec(c[7].trim());
+            }
+        }
+    }
+
+    return secToLongDur(total);
 }
 
 // ============================================================
@@ -94,7 +242,52 @@ function getTotalActiveHoursPerMonth(textFile, driverID, month) {
 // Returns: string formatted as hhh:mm:ss
 // ============================================================
 function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, month) {
-    // TODO: Implement this function
+    var rateContent = fs.readFileSync(rateFile, "utf8");
+    var rateLines = rateContent.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    var dayOff = "";
+    for (var i = 0; i < rateLines.length; i++) {
+        var rc = rateLines[i].split(",");
+        if (rc[0].trim() === driverID) {
+            dayOff = rc[1].trim().toLowerCase();
+            break;
+        }
+    }
+
+    var days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+    var shiftContent = fs.readFileSync(textFile, "utf8");
+    var shiftLines = shiftContent.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    var total = 0;
+
+    for (var j = 0; j < shiftLines.length; j++) {
+        var c = shiftLines[j].split(",");
+        if (c[0].trim() === driverID) {
+            var dateStr = c[2].trim();
+            var recMo = parseInt(dateStr.split("-")[1]);
+            if (recMo !== month) continue;
+
+            var dateObj = new Date(dateStr);
+            if (days[dateObj.getDay()] === dayOff) continue;
+
+            var y = parseInt(dateStr.split("-")[0]);
+            var d = parseInt(dateStr.split("-")[2]);
+            var quota;
+            if (y === 2025 && recMo === 4 && d >= 10 && d <= 30) {
+                quota = 6 * 3600;
+            } else {
+                quota = 8 * 3600 + 24 * 60;
+            }
+
+            total += quota;
+        }
+    }
+
+    total -= bonusCount * 2 * 3600;
+    if (total < 0) total = 0;
+
+    return secToLongDur(total);
 }
 
 // ============================================================
@@ -106,7 +299,40 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 // Returns: integer (net pay)
 // ============================================================
 function getNetPay(driverID, actualHours, requiredHours, rateFile) {
-    // TODO: Implement this function
+    var rateContent = fs.readFileSync(rateFile, "utf8");
+    var rateLines = rateContent.split("\n").filter(function(l) { return l.trim() !== ""; });
+
+    var basePay = 0;
+    var tier = 0;
+    for (var i = 0; i < rateLines.length; i++) {
+        var c = rateLines[i].split(",");
+        if (c[0].trim() === driverID) {
+            basePay = parseInt(c[2].trim());
+            tier = parseInt(c[3].trim());
+            break;
+        }
+    }
+
+    var allowed;
+    if (tier === 1) allowed = 50;
+    else if (tier === 2) allowed = 20;
+    else if (tier === 3) allowed = 10;
+    else allowed = 3;
+
+    var actualSec = durToSec(actualHours);
+    var requiredSec = durToSec(requiredHours);
+
+    if (actualSec >= requiredSec) return basePay;
+
+    var missingHours = (requiredSec - actualSec) / 3600;
+    var billable = missingHours - allowed;
+
+    if (billable <= 0) return basePay;
+
+    var rate = Math.floor(basePay / 185);
+    var deduction = Math.floor(billable) * rate;
+
+    return basePay - deduction;
 }
 
 module.exports = {
